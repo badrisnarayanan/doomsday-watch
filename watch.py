@@ -15,9 +15,19 @@ MIN_SEATS = int(os.environ.get("MIN_SEATS", "1"))
 STATE = "state.json"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36"
 
+def get_html(url):
+    try:
+        from curl_cffi import requests as cr
+        r = cr.get(url, impersonate="chrome", timeout=30,
+                   headers={"Accept-Language": "en-IN,en;q=0.9"})
+        r.raise_for_status()
+        return r.text
+    except ImportError:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        return urllib.request.urlopen(req, timeout=30).read().decode()
+
 def fetch(date):
-    req = urllib.request.Request(MOVIE_URL.format(date=date), headers={"User-Agent": UA})
-    html = urllib.request.urlopen(req, timeout=30).read().decode()
+    html = get_html(MOVIE_URL.format(date=date))
     m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
     ms = json.loads(m.group(1))["props"]["pageProps"]["data"]["serverState"]["movieSessions"]
     out = []
