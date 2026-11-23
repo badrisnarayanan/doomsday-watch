@@ -13,6 +13,19 @@ CINEMAS = ["phoenix", "grand mall", "bsr", "aerohub", "citi centre", "vr mall",
 FRONT = {"budget", "classic", "normal", "economy", "silver", "first class"}
 MIN_SEATS = int(os.environ.get("MIN_SEATS", "1"))
 STATE = "state.json"
+# Only shows starting between 5:00 AM and LATEST_START (24h, default 18:00).
+LATEST_START = os.environ.get("LATEST_START", "18:00")
+
+def mins(t):
+    from datetime import datetime
+    d = datetime.strptime(t.strip().upper(), "%I:%M %p")
+    return d.hour * 60 + d.minute
+
+def ok_time(t):
+    h, m = map(int, LATEST_START.split(":"))
+    try: x = mins(t)
+    except ValueError: return True
+    return 5 * 60 <= x <= h * 60 + m
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36"
 
 def get_html(url):
@@ -38,6 +51,8 @@ def fetch(date):
             if not any(k in name.lower() for k in CINEMAS):
                 continue
             for s in c.get("sessions", []):
+                if not ok_time(s["showTimeText"]):
+                    continue
                 good = sum(a["sAvail"] for a in s.get("areas", [])
                            if a["label"].lower().split(" (")[0] not in FRONT
                            and "couple" not in a["label"].lower())
