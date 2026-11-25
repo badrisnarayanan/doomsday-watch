@@ -8,8 +8,10 @@ from email.message import EmailMessage
 
 MOVIE_URL = "https://www.district.in/movies/avengers-doomsday-movie-tickets-in-chennai-MV176735?fromdate={date}"
 DATES = os.environ.get("DATES", "2026-12-17,2026-12-18,2026-12-19,2026-12-20").split(",")
-CINEMAS = ["phoenix", "grand mall", "bsr", "aerohub", "citi centre", "vr mall",
-           "palazzo", "escape", "sathyam"]
+# District name substring -> short label used in output.
+CINEMAS = {"phoenix": "phoenix", "grand mall": "grand mall", "bsr": "bsr", "aerohub": "aerohub",
+           "citi centre": "citi centre", "vr mall": "vr", "palazzo": "palazzo",
+           "escape": "escape", "sathyam": "sathyam"}
 # Row-level rules (District seat map: higher GridRowId = closer to screen).
 # Skip the front third of rows, and never fewer than FRONT_ROWS rows from the screen.
 FRONT_ROWS = int(os.environ.get("FRONT_ROWS", "3"))
@@ -94,7 +96,8 @@ def fetch(date):
         pd = v.get("pageData") or {}
         for c in pd.get("nearbyCinemas", []) + pd.get("farCinemas", []):
             name = c["cinemaInfo"]["name"]
-            if not any(k in name.lower() for k in CINEMAS):
+            short = next((v for k, v in CINEMAS.items() if k in name.lower()), None)
+            if not short:
                 continue
             for s in c.get("sessions", []):
                 if not ok_time(s["showTimeText"]):
@@ -105,7 +108,7 @@ def fetch(date):
                         good, seats = good_seats(s)
                     except Exception as e:
                         print("seat map failed", name, s["showTimeText"], e, file=sys.stderr)
-                out.append({"key": s["sid"], "cinema": name.split(",")[0], "date": date,
+                out.append({"key": s["sid"], "cinema": short, "date": date,
                             "time": s["showTimeText"], "fmt": s.get("scrnFmt", ""),
                             "lang": s.get("lang", ""), "good": good, "seats": seats[:6]})
     return out
@@ -134,7 +137,11 @@ def main():
     if not shows:
         sys.exit("no data fetched (blocked or page changed)")
     new = [s for s in shows if s["good"] >= MIN_SEATS and prev.get(s["key"], 0) < MIN_SEATS]
-    for s in shows: print(f'{s["date"]} {s["time"]:>8} {s["good"]:>4} good  {s["cinema"]} {s["fmt"]}')
+    from datetime import datetime, timedelta, timezone
+    t = datetime.now(timezone(timedelta(hours=5, minutes=30)))  # IST
+    now = t.strftime("%H:%M:%S")
+    print(f"--- checked {t:%d %b %H:%M:%S} IST ---")
+    for s in shows: print(f'[{now}] {s["date"][5:]} {s["time"]:>8} {s["good"]:>4} good  {s["cinema"]} {s["fmt"]}')
     if new:
         notify([f'{s["cinema"]} {s["date"][5:]} {s["time"]} {s["fmt"]} {s["lang"]}: {s["good"]} seats ({", ".join(s["seats"])})' for s in new])
         print("ALERTED", len(new))
