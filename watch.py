@@ -23,20 +23,23 @@ GUEST_API = "https://www.district.in/gw/auth/skip_login"
 CONTENT_ID = "176735"
 MIN_SEATS = int(os.environ.get("MIN_SEATS", "1"))
 STATE = "state.json"
-# Only shows starting at EARLIEST_START (24h, default 20:00) or later,
-# including late shows past midnight (before 5:00 AM).
-EARLIEST_START = os.environ.get("EARLIEST_START", "20:00")
+# Only shows starting between EARLIEST_START and LATEST_START (24h, inclusive).
+EARLIEST_START = os.environ.get("EARLIEST_START", "08:00")
+LATEST_START = os.environ.get("LATEST_START", "19:30")
 
 def mins(t):
     from datetime import datetime
     d = datetime.strptime(t.strip().upper(), "%I:%M %p")
     return d.hour * 60 + d.minute
 
+def hm(v):
+    h, m = map(int, v.split(":"))
+    return h * 60 + m
+
 def ok_time(t):
-    h, m = map(int, EARLIEST_START.split(":"))
     try: x = mins(t)
     except ValueError: return True
-    return x >= h * 60 + m or x < 5 * 60
+    return hm(EARLIEST_START) <= x <= hm(LATEST_START)
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36"
 
 def get_html(url):
