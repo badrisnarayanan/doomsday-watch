@@ -7,7 +7,7 @@ import json, os, re, sys, urllib.request, smtplib
 from email.message import EmailMessage
 
 MOVIE_URL = "https://www.district.in/movies/avengers-doomsday-movie-tickets-in-chennai-MV176735?fromdate={date}"
-DATES = os.environ.get("DATES", "2026-12-17,2026-12-18").split(",")
+DATES = os.environ.get("DATES", "2026-12-17").split(",")
 # Already booked: only alert for shows starting before this (date + 24h time).
 BEFORE = os.environ.get("BEFORE", "2026-12-18 16:35")
 # District name substring -> short label used in output.
