@@ -7,7 +7,9 @@ import json, os, re, sys, urllib.request, smtplib
 from email.message import EmailMessage
 
 MOVIE_URL = "https://www.district.in/movies/avengers-doomsday-movie-tickets-in-chennai-MV176735?fromdate={date}"
-DATES = os.environ.get("DATES", "2026-12-17,2026-12-18,2026-12-19,2026-12-20").split(",")
+DATES = os.environ.get("DATES", "2026-12-17,2026-12-18").split(",")
+# Already booked: only alert for shows starting before this (date + 24h time).
+BEFORE = os.environ.get("BEFORE", "2026-12-18 16:35")
 # District name substring -> short label used in output.
 CINEMAS = {"phoenix": "phoenix", "grand mall": "grand mall", "bsr": "bsr", "aerohub": "aerohub",
            "citi centre": "citi centre", "vr mall": "vr", "palazzo": "palazzo",
@@ -40,6 +42,11 @@ def ok_time(t):
     try: x = mins(t)
     except ValueError: return True
     return hm(EARLIEST_START) <= x <= hm(LATEST_START)
+def before_booked(date, t):
+    d, hhmm = BEFORE.split()
+    try: x = mins(t)
+    except ValueError: return True
+    return (date, x) < (d, hm(hhmm))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36"
 
 def get_html(url):
@@ -105,6 +112,8 @@ def fetch(date):
                 continue
             for s in c.get("sessions", []):
                 if not ok_time(s["showTimeText"]):
+                    continue
+                if BEFORE and before_booked(date, s["showTimeText"]) is False:
                     continue
                 good, seats = 0, []
                 if s.get("avail", 0) > 0:
